@@ -69,8 +69,7 @@ contract BookManager is Ownable {
 	
 	// CHANGE::
 	// constructor(uint256 index, string memory title, address contractOwner) {
-	constructor(uint256 index, string memory title, address contractOwner) Ownable(msg.sender) {
-		_transferOwnership(contractOwner);
+	constructor(uint256 index, string memory title) Ownable(msg.sender) {
 		deployerAddress = msg.sender;
 		bookIndex = index;
 		bookTitle = title;

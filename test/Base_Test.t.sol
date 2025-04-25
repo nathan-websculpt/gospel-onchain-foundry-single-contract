@@ -15,26 +15,28 @@ abstract contract Base_Test is Test {
         owner = address(this); // The test contract is the deployer/owner.
         alice = address(0x1);
         // bob = address(0x2);
-        bookManagerContract = new BookManager(0, "cloneable blank", owner);
+        bookManagerContract = new BookManager(0, "cloneable blank");
         
     }
 
-    function testLoadVerses() public virtual {
+    function testStoreVerses() public virtual {
         uint256[] memory _verseNumbers = new uint256[](10);
         uint256[] memory _chapterNumbers = new uint256[](10);
         string[] memory _verseContent = new string[](10);
 
         for (uint256 i = 0; i < 10; i++) {
-            _verseNumbers[i] = i + 1;
+            uint256 ip1 = i + 1;
+            _verseNumbers[i] = ip1;
             _chapterNumbers[i] = 1;
-            _verseContent[i] = "TEST";
+            _verseContent[i] = string(abi.encodePacked("TEST ", vm.toString(ip1)));
         }
 
         bytes memory _bookId = abi.encodePacked("0x1234567890abcdef");
 
         bookManagerContract.addBatchVerses(_bookId, _verseNumbers, _chapterNumbers, _verseContent);
 
-        //bookManagerContract.getLastVerseAdded()
-        // assertEq()
+        BookManager.VerseStr memory lastVerseAdded = bookManagerContract.getLastVerseAdded();
+        assertEq(lastVerseAdded.verseNumber, 10);
+        assertEq(lastVerseAdded.verseContent, "TEST 10");
     }
 }
