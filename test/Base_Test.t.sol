@@ -6,7 +6,7 @@ import {BookManager} from "../src/BookManager.sol";
 import {Test, console2} from "forge-std/Test.sol";
 
 abstract contract Base_Test is Test {
-    BookManager bookManagerContract;
+    BookManager _manager;
     address owner;
     address alice;
     // address bob;
@@ -15,7 +15,7 @@ abstract contract Base_Test is Test {
         owner = address(this); // The test contract is the deployer/owner.
         alice = address(0x1);
         // bob = address(0x2);
-        bookManagerContract = new BookManager(0, "cloneable blank");
+        _manager = new BookManager(0, "cloneable blank");
         
     }
 
@@ -33,9 +33,9 @@ abstract contract Base_Test is Test {
 
         bytes memory _bookId = abi.encodePacked("0x1234567890abcdef");
 
-        bookManagerContract.addBatchVerses(_bookId, _verseNumbers, _chapterNumbers, _verseContent);
+        _manager.addBatchVerses(_bookId, _verseNumbers, _chapterNumbers, _verseContent);
 
-        BookManager.VerseStr memory lastVerseAdded = bookManagerContract.getLastVerseAdded();
+        BookManager.VerseStr memory lastVerseAdded = _manager.getLastVerseAdded();
         assertEq(lastVerseAdded.verseNumber, 10);
         assertEq(lastVerseAdded.verseContent, "TEST 10");
     }
