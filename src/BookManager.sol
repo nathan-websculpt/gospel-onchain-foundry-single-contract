@@ -90,10 +90,11 @@ contract BookManager is Ownable {
 	// Dat New-New
 	function addBook(uint256 _index, string memory _title) external onlyOwner {		
 		// TODO: check index/order?
-		BookStr storage newBook;
-		newBook.bookIndex = _index;
-		newBook.bookTitle = _title;
-		books.push(newBook);
+		books.push(); // push an empty item to overcome compiler err: "Storage arrays with nested mappings do not support .push(<arg>)."
+		uint256 thisIndex = books.length - 1; // a: magic numbies, BAD
+
+		books[thisIndex].bookIndex = _index;
+		books[thisIndex].bookTitle = _title;
 		emit Book(_index, _title);
 	}
 	// END:Dat New-New
