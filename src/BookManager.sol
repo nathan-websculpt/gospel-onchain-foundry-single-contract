@@ -12,12 +12,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  *
  */
 
+ // TODO: a getBooks function?
+
 contract BookManager is Ownable {
 	bool hasBeenFinalized;
 	struct BookStr {
 		uint256 bookIndex;
 		bytes bookBytesId; // for subgraph
-		mapping(uint256 => VerseStr) verses; // TODO: compiler err: "Storage arrays with nested mappings do not support .push(<arg>)."
+		mapping(uint256 => VerseStr) verses; // DONE: but maybe this should be bumped out of struct? // compiler err: "Storage arrays with nested mappings do not support .push(<arg>)."
 		mapping(address => uint256[]) confirmations; //maybe these don't need to be in this struct?
 		uint256 numberOfChapters;
 		uint256 numberOfVerses;
