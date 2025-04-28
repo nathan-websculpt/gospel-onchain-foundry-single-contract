@@ -24,7 +24,7 @@ abstract contract Base_Test is Test {
     }
 
     function testStoreBook() public virtual {
-        vm.expectEmit(true, true, false, false);
+        vm.expectEmit(true, true, true, true);
         emit BookManager.Book(indexOne, titleOne);
         _manager.addBook(indexOne, titleOne);
     }

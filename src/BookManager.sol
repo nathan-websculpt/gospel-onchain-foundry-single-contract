@@ -17,7 +17,7 @@ contract BookManager is Ownable {
 	struct BookStr {
 		uint256 bookIndex;
 		bytes bookBytesId; // for subgraph
-		mapping(uint256 => VerseStr) verses;
+		mapping(uint256 => VerseStr) verses; // TODO: compiler err: "Storage arrays with nested mappings do not support .push(<arg>)."
 		mapping(address => uint256[]) confirmations; //maybe these don't need to be in this struct?
 		uint256 numberOfChapters;
 		uint256 numberOfVerses;
@@ -89,11 +89,11 @@ contract BookManager is Ownable {
 
 	// Dat New-New
 	function addBook(uint256 _index, string memory _title) external onlyOwner {		
-		// TODO: check
-		BookStr storage thisBook = books[_index];
-		thisBook.bookIndex = _index;
-		thisBook.bookTitle = _title;
-
+		// TODO: check index/order?
+		BookStr storage newBook;
+		newBook.bookIndex = _index;
+		newBook.bookTitle = _title;
+		books.push(newBook);
 		emit Book(_index, _title);
 	}
 	// END:Dat New-New
@@ -108,7 +108,7 @@ contract BookManager is Ownable {
 		uint256[] memory _chapterNumber,
 		string[] memory _verseContent
 	) external notFinalized onlyOwner {
-		BookStr storage thisBook = books[_bookIndex];
+		BookStr storage thisBook = books[_bookIndex - 1];
 
 		uint256 length = _verseNumber.length;
 		require(
@@ -185,7 +185,7 @@ contract BookManager is Ownable {
 	/// @dev Just for the ability to easily retrieve the last-verse-added on front-end 
 	/// @notice Use this when uploading verses to easily know what the next verse number should be
 	function getLastVerseAdded(uint256 _bookIndex) external view returns (VerseStr memory) {
-		BookStr storage thisBook = books[_bookIndex];
+		BookStr storage thisBook = books[_bookIndex - 1];
 		return thisBook.verses[thisBook.numberOfVerses];
 	}
 
@@ -194,7 +194,7 @@ contract BookManager is Ownable {
 	function getVerseByNumber(uint256 _bookIndex,
 		uint256 _numericalId
 	) external view returns (VerseStr memory) {
-		BookStr storage thisBook = books[_bookIndex];
+		BookStr storage thisBook = books[_bookIndex - 1];
 		return thisBook.verses[_numericalId];
 	}
 
@@ -205,7 +205,7 @@ contract BookManager is Ownable {
 		uint256 _chapterNumber,
 		string memory _verseContent
 	) private {
-		BookStr storage thisBook = books[_bookIndex];
+		BookStr storage thisBook = books[_bookIndex - 1];
 		thisBook.numberOfVerses++;
 		VerseStr storage thisVerse = thisBook.verses[thisBook.numberOfVerses];
 		thisVerse.bookIndex = _bookIndex;
@@ -234,7 +234,7 @@ contract BookManager is Ownable {
 		uint256 _chapterNumber
 	) private view returns (bool) {
 		bool canContinue = true;
-		BookStr storage thisBook = books[_bookIndex];
+		BookStr storage thisBook = books[_bookIndex - 1];
 		VerseStr storage lastVerseAdded = thisBook.verses[thisBook.numberOfVerses];
 
 		if (lastVerseAdded.chapterNumber == _chapterNumber) {
@@ -252,7 +252,7 @@ contract BookManager is Ownable {
 		uint256 _chapterNumber
 	) private view returns (bool) {
 		bool canContinue = true;
-		BookStr storage thisBook = books[_bookIndex];
+		BookStr storage thisBook = books[_bookIndex - 1];
 		VerseStr storage lastVerseAdded = thisBook.verses[thisBook.numberOfVerses];
 		if (
 			_chapterNumber != lastVerseAdded.chapterNumber &&
@@ -269,7 +269,7 @@ contract BookManager is Ownable {
 		uint256 _chapterNumber
 	) private view returns (bool) {
 		bool canContinue = true;
-		BookStr storage thisBook = books[_bookIndex];
+		BookStr storage thisBook = books[_bookIndex - 1];
 		VerseStr storage lastVerseAdded = thisBook.verses[thisBook.numberOfVerses];
 		if (
 			_chapterNumber != lastVerseAdded.chapterNumber && _verseNumber != 1
@@ -279,6 +279,7 @@ contract BookManager is Ownable {
 		return canContinue;
 	}
 
+	//TODO: incorporate the bookIndex into this
 	function enforceFirstVerse(
 		uint256 _bookIndex,
 		uint256 _verseNumber,
