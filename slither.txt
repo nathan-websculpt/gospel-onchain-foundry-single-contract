@@ -1,0 +1,58 @@
+INFO:Detectors:
+BookManager.finalizeBook(uint256,bytes) (src/BookManager.sol#181-189) compares to a boolean constant:
+        -require(bool,string)(thisBook.hasBeenFinalized == false,This Book has already been finalized.) (src/BookManager.sol#186)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#boolean-equality
+INFO:Detectors:
+2 different versions of Solidity are used:
+        - Version constraint ^0.8.20 is used by:
+                -^0.8.20 (lib/openzeppelin-contracts/contracts/access/Ownable.sol#4)
+                -^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Context.sol#4)
+        - Version constraint >=0.8.0<0.9.0 is used by:
+                ->=0.8.0<0.9.0 (src/BookManager.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+INFO:Detectors:
+Version constraint ^0.8.20 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - VerbatimInvalidDeduplication
+        - FullInlinerNonExpressionSplitArgumentEvaluationOrder
+        - MissingSideEffectsOnSelectorAccess.
+It is used by:
+        - ^0.8.20 (lib/openzeppelin-contracts/contracts/access/Ownable.sol#4)
+        - ^0.8.20 (lib/openzeppelin-contracts/contracts/utils/Context.sol#4)
+Version constraint >=0.8.0<0.9.0 is too complex.
+It is used by:
+        - >=0.8.0<0.9.0 (src/BookManager.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+INFO:Detectors:
+Parameter BookManager.addBook(uint256,string)._index (src/BookManager.sol#83) is not in mixedCase
+Parameter BookManager.addBook(uint256,string)._title (src/BookManager.sol#83) is not in mixedCase
+Parameter BookManager.addBatchVerses(uint256,bytes,uint256[],uint256[],string[])._bookIndex (src/BookManager.sol#98) is not in mixedCase
+Parameter BookManager.addBatchVerses(uint256,bytes,uint256[],uint256[],string[])._bookId (src/BookManager.sol#99) is not in mixedCase
+Parameter BookManager.addBatchVerses(uint256,bytes,uint256[],uint256[],string[])._verseNumber (src/BookManager.sol#100) is not in mixedCase
+Parameter BookManager.addBatchVerses(uint256,bytes,uint256[],uint256[],string[])._chapterNumber (src/BookManager.sol#101) is not in mixedCase
+Parameter BookManager.addBatchVerses(uint256,bytes,uint256[],uint256[],string[])._verseContent (src/BookManager.sol#102) is not in mixedCase
+Parameter BookManager.confirmVerse(uint256,bytes,uint256)._bookIndex (src/BookManager.sol#159) is not in mixedCase
+Parameter BookManager.confirmVerse(uint256,bytes,uint256)._verseId (src/BookManager.sol#160) is not in mixedCase
+Parameter BookManager.confirmVerse(uint256,bytes,uint256)._numericalId (src/BookManager.sol#161) is not in mixedCase
+Parameter BookManager.finalizeBook(uint256,bytes)._bookIndex (src/BookManager.sol#182) is not in mixedCase
+Parameter BookManager.finalizeBook(uint256,bytes)._bookId (src/BookManager.sol#183) is not in mixedCase
+Parameter BookManager.getLastVerseAdded(uint256)._bookIndex (src/BookManager.sol#195) is not in mixedCase
+Parameter BookManager.getVerseByNumber(uint256,uint256)._bookIndex (src/BookManager.sol#202) is not in mixedCase
+Parameter BookManager.getVerseByNumber(uint256,uint256)._numericalId (src/BookManager.sol#203) is not in mixedCase
+Parameter BookManager.preventSkippingVerse(uint256,uint256,uint256)._bookIndex (src/BookManager.sol#240) is not in mixedCase
+Parameter BookManager.preventSkippingVerse(uint256,uint256,uint256)._verseNumber (src/BookManager.sol#241) is not in mixedCase
+Parameter BookManager.preventSkippingVerse(uint256,uint256,uint256)._chapterNumber (src/BookManager.sol#242) is not in mixedCase
+Parameter BookManager.preventSkippingChapter(uint256,uint256)._bookIndex (src/BookManager.sol#259) is not in mixedCase
+Parameter BookManager.preventSkippingChapter(uint256,uint256)._chapterNumber (src/BookManager.sol#260) is not in mixedCase
+Parameter BookManager.enforceFirstVerseOfNewChapter(uint256,uint256,uint256)._bookIndex (src/BookManager.sol#275) is not in mixedCase
+Parameter BookManager.enforceFirstVerseOfNewChapter(uint256,uint256,uint256)._verseNumber (src/BookManager.sol#276) is not in mixedCase
+Parameter BookManager.enforceFirstVerseOfNewChapter(uint256,uint256,uint256)._chapterNumber (src/BookManager.sol#277) is not in mixedCase
+Parameter BookManager.enforceFirstVerse(uint256,uint256,uint256)._verseNumber (src/BookManager.sol#293) is not in mixedCase
+Parameter BookManager.enforceFirstVerse(uint256,uint256,uint256)._chapterNumber (src/BookManager.sol#294) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+INFO:Detectors:
+BookManager.hasBeenFinalized (src/BookManager.sol#18) is never used in BookManager (src/BookManager.sol#17-303)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-state-variable
+INFO:Detectors:
+BookManager.hasBeenFinalized (src/BookManager.sol#18) should be constant 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-constant
+INFO:Slither:. analyzed (3 contracts with 100 detectors), 31 result(s) found
