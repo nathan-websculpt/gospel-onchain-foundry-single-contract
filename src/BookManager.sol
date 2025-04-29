@@ -25,6 +25,7 @@ contract BookManager is Ownable {
 		uint256 numberOfVerses;
 		address deployerAddress;
 		string bookTitle;
+		bool hasBeenFinalized;
 	}
 
 	BookStr[] public books;
@@ -60,20 +61,9 @@ contract BookManager is Ownable {
 
 	event Finalization(address indexed finalizedBy, bytes bookId);
 
-	// modifier hasNotConfirmed(address addr, uint256 verseId) {
-	// 	bool canContinue = true;
-	// 	for (uint256 i = 0; i < confirmations[addr].length; i++) {
-	// 		if (confirmations[addr][i] == verseId) {
-	// 			canContinue = false;
-	// 			break;
-	// 		}
-	// 	}
-	// 	require(canContinue, "This address has already confirmed this verse.");
-	// 	_;
-	// }
-
-	modifier notFinalized() {
-		require(!hasBeenFinalized, "This contract has already been finalized.");
+	modifier notFinalized(uint256 bookIndex) {
+		BookStr storage thisBook = books[bookIndex - 1];
+		require(!thisBook.hasBeenFinalized, "This book has already been finalized.");
 		_;
 	}
 
@@ -110,7 +100,7 @@ contract BookManager is Ownable {
 		uint256[] memory _verseNumber,
 		uint256[] memory _chapterNumber,
 		string[] memory _verseContent
-	) external notFinalized onlyOwner {
+	) external notFinalized(_bookIndex) onlyOwner {
 		BookStr storage thisBook = books[_bookIndex - 1];
 
 		uint256 length = _verseNumber.length;
@@ -165,25 +155,40 @@ contract BookManager is Ownable {
 
 	/// @dev Allows a user to confirm a verse
 	/// @notice Once you have compared a verse against the original source, you can confirm it
-	// function confirmVerse(
-	// 	bytes memory _verseId,
-	// 	uint256 _numericalId
-	// ) external 
-	// // hasNotConfirmed(msg.sender, _numericalId)  //TODO:
-	// {
-	// 	confirmations[msg.sender].push(_numericalId);
-	// 	emit Confirmation(msg.sender, _verseId);
-	// }
+	function confirmVerse(
+		uint256 _bookIndex,
+		bytes memory _verseId,
+		uint256 _numericalId
+	) external 
+	{
+		bool canContinue = true;
+		BookStr storage thisBook = books[_bookIndex - 1];
+		for (uint256 i = 0; i < thisBook.confirmations[msg.sender].length; i++) {
+			if (thisBook.confirmations[msg.sender][i] == _numericalId) {
+				canContinue = false;
+				break;
+			}
+		}
+		require(canContinue, "This address has already confirmed this verse.");
+
+		thisBook.confirmations[msg.sender].push(_numericalId);
+		emit Confirmation(msg.sender, _verseId);
+	}
 
 	/// Can't add verses after book is finalized
 	/// @dev sets hasBeenFinalized to true; only needs the subgraph bookId to update on event
 	/// @notice This function can't be un-done - verses can't be added once book is finalized
 	function finalizeBook(
+		uint256 _bookIndex,
 		bytes memory _bookId
-	) external notFinalized onlyOwner {
-		hasBeenFinalized = true;
+	) external onlyOwner {
+		BookStr storage thisBook = books[_bookIndex - 1];
+		require(thisBook.hasBeenFinalized == false, "This Book has already been finalized.");
+		thisBook.hasBeenFinalized = true;
 		emit Finalization(msg.sender, _bookId);
 	}
+
+	//TODO: add function to finalize whole book
 
 	/// @dev Just for the ability to easily retrieve the last-verse-added on front-end 
 	/// @notice Use this when uploading verses to easily know what the next verse number should be

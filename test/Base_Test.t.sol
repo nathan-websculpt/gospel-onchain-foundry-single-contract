@@ -41,7 +41,6 @@ abstract contract Base_Test is Test {
         vm.prank(alice);
         _manager.addBook(indexOne, titleOne);
 
-
         //TODO:
         // BookManager.Book[] memory _books = _manager.getBooks();
         // assertEq(_books.length, 2);
@@ -243,7 +242,7 @@ abstract contract Base_Test is Test {
             _verseNumbers,
             _chapterNumbers,
             _verseContent
-        );        
+        );
         vm.stopPrank();
     }
 
@@ -301,10 +300,195 @@ abstract contract Base_Test is Test {
         assertEq(firstVerse.verseNumber, 1);
         assertEq(firstVerse.verseContent, "TEST 1");
 
-        BookManager.VerseStr memory anotherTest = _manager.getVerseByNumber(indexOne, 11);
+        BookManager.VerseStr memory anotherTest = _manager.getVerseByNumber(
+            indexOne,
+            11
+        );
 
         assertEq(anotherTest.verseNumber, 11);
         assertEq(anotherTest.verseContent, "TEST 11");
+    }
+
+    function testConfirmVerses() public virtual {
+        _manager.addBook(indexOne, titleOne);
+
+        // At the end of the day, _bookId is only for the subgraph
+        bytes memory _bookId = abi.encodePacked("0x1234567890abcdef");
+
+        (
+            uint256[] memory _verseNumbers,
+            uint256[] memory _chapterNumbers,
+            string[] memory _verseContent
+        ) = _makeVerses();
+
+        vm.recordLogs();
+        _manager.addBatchVerses(
+            indexOne,
+            _bookId,
+            _verseNumbers,
+            _chapterNumbers,
+            _verseContent
+        );
+        Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
+        assertEq(recordedLogs.length, ARRAY_LEN);
+
+        for (uint256 i = 0; i < recordedLogs.length; i++) {
+            address signer = address(
+                uint160(uint256(recordedLogs[i].topics[1]))
+            );
+            assertEq(signer, address(this));
+
+            // The .data field contains the ABI-encoded values of the event's non-indexed arguments, packed together in the order they appear in the event definition
+            (
+                uint256 loggedBookIndex,
+                bytes memory loggedBookId,
+                uint256 loggedVerseId,
+                uint256 loggedVerseNumber,
+                uint256 loggedChapterNumber,
+                string memory loggedVerseContent
+            ) = abi.decode(
+                    recordedLogs[i].data,
+                    (uint256, bytes, uint256, uint256, uint256, string)
+                );
+
+            assertEq(loggedBookIndex, indexOne);
+            assertEq(loggedBookId, _bookId);
+            assertEq(loggedVerseId, _verseNumbers[i]);
+            assertEq(loggedVerseNumber, _verseNumbers[i]);
+            assertEq(loggedChapterNumber, _chapterNumbers[i]);
+            assertEq(loggedVerseContent, _verseContent[i]);
+
+            // this verse ID bytes array is just for the subgraph
+            bytes memory _verseBytesId = abi.encodePacked(
+                "0xverse",
+                vm.toString(i + 1)
+            );
+
+            // now test a confirmation by Alice
+            vm.startPrank(alice);
+            vm.expectEmit(true, true, true, true);
+            emit BookManager.Confirmation(alice, _verseBytesId);
+            _manager.confirmVerse(indexOne, _verseBytesId, loggedVerseId);
+            vm.stopPrank();
+
+            // now test a second confirmation by Bob
+            vm.startPrank(bob);
+            vm.expectEmit(true, true, true, true);
+            emit BookManager.Confirmation(bob, _verseBytesId);
+            _manager.confirmVerse(indexOne, _verseBytesId, loggedVerseId);
+            vm.stopPrank();
+        }
+    }
+
+    function testFinalizeBook() public virtual {
+        vm.expectEmit(true, true, true, true);
+        emit BookManager.Book(indexOne, titleOne);
+        _manager.addBook(indexOne, titleOne);
+
+        bytes memory _bookId = abi.encodePacked("0x1234567890abcdef"); //only for subgraph
+
+        vm.expectEmit(true, true, true, true);
+        emit BookManager.Finalization(address(this), _bookId);
+        _manager.finalizeBook(indexOne, _bookId);
+    }
+
+    function testOnlyOwnerCanFinalizeBook() public virtual {
+        vm.expectEmit(true, true, true, true);
+        emit BookManager.Book(indexOne, titleOne);
+        _manager.addBook(indexOne, titleOne);
+
+        bytes memory _bookId = abi.encodePacked("0x1234567890abcdef"); //only for subgraph
+
+        assertEq(_manager.owner(), owner);
+        _manager.transferOwnership(alice);
+        assertEq(_manager.owner(), alice);
+
+        // make sure old owner can't finalize book
+        vm.expectRevert();
+        _manager.finalizeBook(indexOne, _bookId);
+
+        // make sure new owner can finalize book
+        vm.startPrank(alice);
+        vm.expectEmit(true, true, true, true);
+        emit BookManager.Finalization(alice, _bookId);
+        _manager.finalizeBook(indexOne, _bookId);
+        vm.stopPrank();
+    }
+
+    function test_RevertWhen_storeVerseAfterFinalization() public virtual {  
+        _manager.addBook(indexOne, titleOne);
+
+        bytes memory _bookId = abi.encodePacked("0x1234567890abcdef"); //only for subgraph
+
+        _manager.finalizeBook(indexOne, _bookId);
+
+        // now try to add verses to this finalized book (should fail)
+
+        (
+            uint256[] memory _verseNumbers,
+            uint256[] memory _chapterNumbers,
+            string[] memory _verseContent
+        ) = _makeVerses();
+
+        vm.expectRevert("This book has already been finalized.");
+        _manager.addBatchVerses(
+            indexOne,
+            _bookId,
+            _verseNumbers,
+            _chapterNumbers,
+            _verseContent
+        );
+    }
+
+    function test_RevertsWhen_samePersonConfirmsVerseTwice() public virtual {     
+        _manager.addBook(indexOne, titleOne);
+
+        bytes memory _bookId = abi.encodePacked("0x1234567890abcdef"); //only for subgraph
+
+        (
+            uint256[] memory _verseNumbers,
+            uint256[] memory _chapterNumbers,
+            string[] memory _verseContent
+        ) = _makeVerses();
+
+        vm.recordLogs();
+        _manager.addBatchVerses(
+            indexOne,
+            _bookId,
+            _verseNumbers,
+            _chapterNumbers,
+            _verseContent
+        );
+        Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
+
+        for (uint256 i = 0; i < recordedLogs.length; i++) {
+            // The .data field contains the ABI-encoded values of the event's non-indexed arguments, packed together in the order they appear in the event definition
+            (
+                uint256 loggedBookIndex,
+                bytes memory loggedBookId,
+                uint256 loggedVerseId,
+                uint256 loggedVerseNumber,
+                uint256 loggedChapterNumber,
+                string memory loggedVerseContent
+            ) = abi.decode(recordedLogs[i].data, (uint256, bytes, uint256, uint256, uint256, string));
+
+
+            // this verse ID bytes array is just for the subgraph
+            bytes memory _verseBytesId = abi.encodePacked(
+                "0xverse",
+                vm.toString(i + 1)
+            );
+
+            // now test a confirmation
+            vm.startPrank(alice);
+            vm.expectEmit(true, true, true, true);
+            emit BookManager.Confirmation(alice, _verseBytesId);
+            _manager.confirmVerse(indexOne, _verseBytesId, loggedVerseId);
+
+            vm.expectRevert("This address has already confirmed this verse.");
+            _manager.confirmVerse(indexOne, _verseBytesId, loggedVerseId);
+            vm.stopPrank();
+        }
     }
 
     // VERSE/CHAPTER ORDER ENFORCEMENT
@@ -351,7 +535,9 @@ abstract contract Base_Test is Test {
             );
         }
 
-        vm.expectRevert("The contract is preventing you from skipping a verse.");
+        vm.expectRevert(
+            "The contract is preventing you from skipping a verse."
+        );
         _manager.addBatchVerses(
             indexOne,
             _bookId,
@@ -394,7 +580,7 @@ abstract contract Base_Test is Test {
         string[] memory _batch2verseContent = new string[](5);
 
         for (uint256 i = 0; i < 5; i++) {
-            uint256 ip1 = i + 1; 
+            uint256 ip1 = i + 1;
             _batch2verseNumbers[i] = ip1;
             _batch2chapterNumbers[i] = 3; //will get the chapter number out of whack (skipping a chapter)
             _batch2verseContent[i] = string(
@@ -402,7 +588,9 @@ abstract contract Base_Test is Test {
             );
         }
 
-        vm.expectRevert("The contract is preventing you from skipping a chapter.");
+        vm.expectRevert(
+            "The contract is preventing you from skipping a chapter."
+        );
         _manager.addBatchVerses(
             indexOne,
             _bookId,
@@ -432,7 +620,9 @@ abstract contract Base_Test is Test {
             );
         }
 
-        vm.expectRevert("The contract is preventing you from starting with a verse that is not 1:1");
+        vm.expectRevert(
+            "The contract is preventing you from starting with a verse that is not 1:1"
+        );
         _manager.addBatchVerses(
             indexOne,
             _bookId,
@@ -454,7 +644,7 @@ abstract contract Base_Test is Test {
         string[] memory _verseContent = new string[](5);
 
         for (uint256 i = 0; i < 5; i++) {
-            uint256 ip1 = i + 1; 
+            uint256 ip1 = i + 1;
             _verseNumbers[i] = ip1;
             _chapterNumbers[i] = 2; // like starting with Genesis 2:1
             _verseContent[i] = string(
@@ -462,7 +652,9 @@ abstract contract Base_Test is Test {
             );
         }
 
-        vm.expectRevert("The contract is preventing you from starting with a verse that is not 1:1");
+        vm.expectRevert(
+            "The contract is preventing you from starting with a verse that is not 1:1"
+        );
         _manager.addBatchVerses(
             indexOne,
             _bookId,
@@ -505,7 +697,7 @@ abstract contract Base_Test is Test {
         string[] memory _batch2verseContent = new string[](5);
 
         for (uint256 i = 0; i < 5; i++) {
-            uint256 ip1 = i + 2;  // starts a new chapter off on verse 2, which should revert
+            uint256 ip1 = i + 2; // starts a new chapter off on verse 2, which should revert
             _batch2verseNumbers[i] = ip1;
             _batch2chapterNumbers[i] = 2;
             _batch2verseContent[i] = string(
@@ -513,7 +705,9 @@ abstract contract Base_Test is Test {
             );
         }
 
-        vm.expectRevert("The contract is preventing you from starting a new chapter with a verse that is not 1.");
+        vm.expectRevert(
+            "The contract is preventing you from starting a new chapter with a verse that is not 1."
+        );
         _manager.addBatchVerses(
             indexOne,
             _bookId,
