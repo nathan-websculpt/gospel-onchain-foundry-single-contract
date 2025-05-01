@@ -30,6 +30,8 @@ abstract contract Base_Test is Test {
         _manager = new BookManager();
     }
 
+    // TODO: try to get price involved (etherscan v2) to know gas in ETH and USD
+    // TODO: percent-increase log will move over to checking after every 100 verses for a gas/percent-increase
     // forge test --mt testLogGasIncreasePerVerse
     function testLogGasIncreasePerVerse() public virtual {
         uint256 scale = 1e18; // for precision/fixed-point arithmetic
@@ -70,6 +72,7 @@ abstract contract Base_Test is Test {
             if (oldGasUsed != 0) {
                 if (oldGasUsed < gasUsed) {
                     console2.log("\n");
+                    //TODO: tweak math to a larger scale, check math as well
                     uint256 diff = gasUsed - oldGasUsed;
                     uint256 percentageIncrease = (diff * scale) / oldGasUsed;
                     // percentageIncrease * 10000 scales it up to get two decimal places in percent; Dividing by scale brings it back to a human-readable number
@@ -81,6 +84,9 @@ abstract contract Base_Test is Test {
                     console2.log("increase", diff);
                     console2.log("percentage increase", percentageWith2Decimals);
                     console2.log("\n");
+                }
+                else {
+                    console2.log("No Increase, gas used: ", gasUsed);
                 }
             }
             oldGasUsed = gasUsed;
