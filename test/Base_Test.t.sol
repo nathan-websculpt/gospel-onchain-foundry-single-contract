@@ -10,7 +10,7 @@ import {BookManager} from "../src/BookManager.sol";
 import {Test, console2, Vm} from "forge-std/Test.sol";
 
 abstract contract Base_Test is Test {
-    uint256 constant ARRAY_LEN = 20;
+    uint256 constant ARRAY_LEN = 100;
     BookManager _manager;
     address owner;
     address alice;
@@ -30,69 +30,97 @@ abstract contract Base_Test is Test {
         _manager = new BookManager();
     }
 
-    // TODO: try to get price involved (etherscan v2) to know gas in ETH and USD
-    // TODO: percent-increase log will move over to checking after every 100 verses for a gas/percent-increase
-    // forge test --mt testLogGasIncreasePerVerse
-    function testLogGasIncreasePerVerse() public virtual {
-        uint256 scale = 1e18; // for precision/fixed-point arithmetic
-        uint256 oldGasUsed = 0;
+    // forge test --mt testLogGasIncreasePerBatch
+    function testLogGasIncreasePerBatch() public virtual {
         _manager.addBook(indexOne, titleOne);
-
         bytes memory _bookId = abi.encodePacked("0x1234567890abcdef");
 
-        (
-            uint256[] memory _verseNumbers,
-            uint256[] memory _chapterNumbers,
-            string[] memory _verseContent
-        ) = _makeVerses();
+        uint256 scale = 10000; // for precision/fixed-point arithmetic
+        uint256 oldGasUsed = 0;
+        uint256 gas = gasleft();
+        uint256 firstTxGas = 0;
+        uint256 lastTxGas = 0;
+        console2.log("initial gas: ", gas);
 
-        uint256 initialGas = gasleft();
-        console2.log("initial gas: ", initialGas);
-
-        for (uint256 i = 0; i < _verseNumbers.length; i++) {
-            uint256[] memory singleVerseNumber = new uint256[](1);
-            uint256[] memory singleChapterNumber = new uint256[](1);
-            string[] memory singleVerseContent = new string[](1);
-
-            singleVerseNumber[0] = _verseNumbers[i];
-            singleChapterNumber[0] = _chapterNumbers[i];
-            singleVerseContent[0] = _verseContent[i];
+        //store 5 batches
+        for (uint256 i = 0; i < 5; i++) {
+            (
+                uint256[] memory _verseNumbers,
+                uint256[] memory _chapterNumbers,
+                string[] memory _verseContent
+            ) = _makeVerses(i + 1);
 
             _manager.addBatchVerses(
                 indexOne,
                 _bookId,
-                singleVerseNumber,
-                singleChapterNumber,
-                singleVerseContent
+                _verseNumbers,
+                _chapterNumbers,
+                _verseContent
             );
 
-            uint256 gasUsed = initialGas - gasleft();
+            uint256 gasUsed = gas - gasleft();
 
             // percentage increase = ((newVal - oldVal) / oldVal) x 100%
             if (oldGasUsed != 0) {
                 if (oldGasUsed < gasUsed) {
                     console2.log("\n");
-                    //TODO: tweak math to a larger scale, check math as well
                     uint256 diff = gasUsed - oldGasUsed;
-                    uint256 percentageIncrease = (diff * scale) / oldGasUsed;
-                    // percentageIncrease * 10000 scales it up to get two decimal places in percent; Dividing by scale brings it back to a human-readable number
-                    uint256 percentageWith2Decimals = (percentageIncrease * 10000) / scale;
-                    // percentageWith2Decimals = 2000, which means 20.00%
+                    uint256 scaledPercentage = (diff * scale) / oldGasUsed;
+                    
+                    uint256 integerPart = scaledPercentage / 100;
+                    uint256 decimalPart = scaledPercentage % 100;
 
-                    string memory gasUsedStr = string(abi.encodePacked("Gas used for verse ", vm.toString(i + 1), ":"));
+                    string memory rslt = string(abi.encodePacked(
+                        vm.toString(integerPart),
+                        ".",
+                        decimalPart < 10 ? "0" : "",
+                        vm.toString(decimalPart),
+                        "%"
+                    ));
+
+                    string memory gasUsedStr = string(abi.encodePacked("Gas used for batch # ", vm.toString(i + 1), ":"));
                     console2.log(gasUsedStr, gasUsed);
                     console2.log("increase", diff);
-                    console2.log("percentage increase", percentageWith2Decimals);
+                    console2.log("percentage increase", rslt);
                     console2.log("\n");
-                }
-                else {
+                } else {
                     console2.log("No Increase, gas used: ", gasUsed);
                 }
+            } else {
+                firstTxGas = gas - gasleft();
+                console2.log("FIRST RUN, gas used: ", vm.toString(firstTxGas));
             }
+            if(i == 5) lastTxGas = gasUsed;
             oldGasUsed = gasUsed;
 
-            initialGas = gasleft();
-            console2.log("ENDOFLOOP gasLeft: ", initialGas);
+            gas = gasleft();
+            console2.log("ENDOFLOOP gasLeft: ", gas);
+        }
+
+        //now log the entire increase (across all 5 batches)
+        if(lastTxGas > firstTxGas) {
+            uint256 diff = lastTxGas - firstTxGas;
+            uint256 scaledPercentage = (diff * scale) / firstTxGas;
+            
+            uint256 integerPart = scaledPercentage / 100;
+            uint256 decimalPart = scaledPercentage % 100;
+
+            string memory rslt = string(abi.encodePacked(
+                vm.toString(integerPart),
+                ".",
+                decimalPart < 10 ? "0" : "",
+                vm.toString(decimalPart),
+                "%"
+            ));
+            console2.log("\n");
+            console2.log("entire % increase", rslt);
+            console2.log("first tx gas", firstTxGas);
+            console2.log("last tx gas", lastTxGas);
+        } else {
+            console2.log("\n");
+            console2.log("First tx cost more than the final tx - no extra log needed");
+            console2.log("\n");
+            console2.log("\n");
         }
     }
 
@@ -139,7 +167,7 @@ abstract contract Base_Test is Test {
             uint256[] memory _verseNumbers,
             uint256[] memory _chapterNumbers,
             string[] memory _verseContent
-        ) = _makeVerses();
+        ) = _makeVerses(1);
 
         vm.recordLogs();
         _manager.addBatchVerses(
@@ -195,7 +223,7 @@ abstract contract Base_Test is Test {
             uint256[] memory _verseNumbers,
             uint256[] memory _chapterNumbers,
             string[] memory _verseContent
-        ) = _makeVerses();
+        ) = _makeVerses(1);
 
         //Book Two's verses [5 items]
         uint256[] memory _b2verseNumbers = new uint256[](5);
@@ -248,9 +276,9 @@ abstract contract Base_Test is Test {
             _b3verseContent
         );
         Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
-        assertEq(recordedLogs.length, 30);
+        assertEq(recordedLogs.length, 110);
 
-        for (uint256 i = 0; i < 30; i++) {
+        for (uint256 i = 0; i < 110; i++) {
             // The .data field contains the ABI-encoded values of the event's non-indexed arguments, packed together in the order they appear in the event definition
             (
                 uint256 loggedBookIndex,
@@ -264,7 +292,7 @@ abstract contract Base_Test is Test {
                     (uint256, bytes, uint256, uint256, uint256, string)
                 );
 
-            if (i < 20) {
+            if (i < ARRAY_LEN) {
                 //book one [20 items]
                 assertEq(loggedBookIndex, indexOne);
                 assertEq(loggedBookId, _b1Id);
@@ -272,22 +300,22 @@ abstract contract Base_Test is Test {
                 assertEq(loggedVerseNumber, _verseNumbers[i]);
                 assertEq(loggedChapterNumber, _chapterNumbers[i]);
                 assertEq(loggedVerseContent, _verseContent[i]);
-            } else if (i < 25) {
+            } else if (i < 105) {
                 //book two [5 items]
                 assertEq(loggedBookIndex, indexTwo);
                 assertEq(loggedBookId, _b2Id);
-                assertEq(loggedVerseId, _b2verseNumbers[i - 20]);
-                assertEq(loggedVerseNumber, _b2verseNumbers[i - 20]);
-                assertEq(loggedChapterNumber, _b2chapterNumbers[i - 20]);
-                assertEq(loggedVerseContent, _b2verseContent[i - 20]);
+                assertEq(loggedVerseId, _b2verseNumbers[i - ARRAY_LEN]);
+                assertEq(loggedVerseNumber, _b2verseNumbers[i - ARRAY_LEN]);
+                assertEq(loggedChapterNumber, _b2chapterNumbers[i - ARRAY_LEN]);
+                assertEq(loggedVerseContent, _b2verseContent[i - ARRAY_LEN]);
             } else {
                 // book three [5 items]
                 assertEq(loggedBookIndex, indexThree);
                 assertEq(loggedBookId, _b3Id);
-                assertEq(loggedVerseId, _b3verseNumbers[i - 25]);
-                assertEq(loggedVerseNumber, _b3verseNumbers[i - 25]);
-                assertEq(loggedChapterNumber, _b3chapterNumbers[i - 25]);
-                assertEq(loggedVerseContent, _b3verseContent[i - 25]);
+                assertEq(loggedVerseId, _b3verseNumbers[i - 105]);
+                assertEq(loggedVerseNumber, _b3verseNumbers[i - 105]);
+                assertEq(loggedChapterNumber, _b3chapterNumbers[i - 105]);
+                assertEq(loggedVerseContent, _b3verseContent[i - 105]);
             }
         }
     }
@@ -302,7 +330,7 @@ abstract contract Base_Test is Test {
             uint256[] memory _verseNumbers,
             uint256[] memory _chapterNumbers,
             string[] memory _verseContent
-        ) = _makeVerses();
+        ) = _makeVerses(1);
 
         vm.startPrank(alice);
         vm.expectRevert();
@@ -325,7 +353,7 @@ abstract contract Base_Test is Test {
             uint256[] memory _verseNumbers,
             uint256[] memory _chapterNumbers,
             string[] memory _verseContent
-        ) = _makeVerses();
+        ) = _makeVerses(1);
 
         _manager.addBatchVerses(
             indexOne,
@@ -340,7 +368,7 @@ abstract contract Base_Test is Test {
         );
 
         assertEq(lastVerseAdded.verseNumber, ARRAY_LEN);
-        assertEq(lastVerseAdded.verseContent, "TEST 20");
+        assertEq(lastVerseAdded.verseContent, string(abi.encodePacked("TEST ", vm.toString(ARRAY_LEN))));
     }
 
     function testGetVerseByNumber() public virtual {
@@ -352,7 +380,7 @@ abstract contract Base_Test is Test {
             uint256[] memory _verseNumbers,
             uint256[] memory _chapterNumbers,
             string[] memory _verseContent
-        ) = _makeVerses();
+        ) = _makeVerses(1);
 
         _manager.addBatchVerses(
             indexOne,
@@ -389,7 +417,7 @@ abstract contract Base_Test is Test {
             uint256[] memory _verseNumbers,
             uint256[] memory _chapterNumbers,
             string[] memory _verseContent
-        ) = _makeVerses();
+        ) = _makeVerses(1);
 
         vm.recordLogs();
         _manager.addBatchVerses(
@@ -498,7 +526,7 @@ abstract contract Base_Test is Test {
             uint256[] memory _verseNumbers,
             uint256[] memory _chapterNumbers,
             string[] memory _verseContent
-        ) = _makeVerses();
+        ) = _makeVerses(1);
 
         vm.expectRevert("This book has already been finalized.");
         _manager.addBatchVerses(
@@ -519,7 +547,7 @@ abstract contract Base_Test is Test {
             uint256[] memory _verseNumbers,
             uint256[] memory _chapterNumbers,
             string[] memory _verseContent
-        ) = _makeVerses();
+        ) = _makeVerses(1);
 
         vm.recordLogs();
         _manager.addBatchVerses(
@@ -791,7 +819,7 @@ abstract contract Base_Test is Test {
     // END: VERSE/CHAPTER ORDER ENFORCEMENT
 
     // HELPERS
-    function _makeVerses()
+    function _makeVerses(uint256 chapterNumber)
         private
         returns (uint256[] memory, uint256[] memory, string[] memory)
     {
@@ -802,7 +830,7 @@ abstract contract Base_Test is Test {
         for (uint256 i = 0; i < ARRAY_LEN; i++) {
             uint256 ip1 = i + 1;
             _verseNumbers[i] = ip1;
-            _chapterNumbers[i] = 1;
+            _chapterNumbers[i] = chapterNumber;
             _verseContent[i] = string(
                 abi.encodePacked("TEST ", vm.toString(ip1))
             );
