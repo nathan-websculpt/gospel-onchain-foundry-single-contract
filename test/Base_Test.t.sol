@@ -44,26 +44,28 @@ abstract contract Base_Test is Test {
     }
 
     // forge test --mt testjsonfile
-    function testjsonfile() public virtual {
-        // JSONVerses memory jsonVerses = _getBook("genesis");
-        JSONVerses memory jsonVerses = _getBook("ruth");
+    // function testjsonfile() public virtual {
+    //     // JSONVerses memory jsonVerses = _getBook("genesis");
+    //     JSONVerses memory jsonVerses = _getBook("ruth");
 
-        for (uint256 i = 0; i < jsonVerses.verses.length; i++) {
-            AlphabeticalVerseStruct memory v = jsonVerses.verses[i];
+    //     for (uint256 i = 0; i < jsonVerses.verses.length; i++) {
+    //         AlphabeticalVerseStruct memory v = jsonVerses.verses[i];
 
-            console2.log(
-                // "verse: %d, chapter: %d, verseContent: %s",
-                "verse: %d, chapter: %d, length: %d",
-                v.VerseNumber,
-                v.ChapterNumber,
-                v.StringLength
-            );
-            // v.VerseContent,
-        }
-    }
+    //         console2.log(
+    //             // "verse: %d, chapter: %d, verseContent: %s",
+    //             "verse: %d, chapter: %d, length: %d",
+    //             v.VerseNumber,
+    //             v.ChapterNumber,
+    //             v.StringLength
+    //         );
+    //         // v.VerseContent,
+    //     }
+    // }
 
-    // forge test --mt testLogGasIncreasePerBatch
-    function testLogGasIncreasePerBatch() public virtual {
+    // real data
+    // forge test --mt testLogGasIncreasePerBatch_RealData
+    // TODO: add asserts - currently just for console
+    function testLogGasIncreasePerBatch_RealData() public virtual {
         _manager.addBook(indexOne, titleOne);
         bytes memory _bookId = abi.encodePacked("0x1234567890abcdef");
 
@@ -72,21 +74,34 @@ abstract contract Base_Test is Test {
         uint256 gas = gasleft();
         uint256 firstTxGas = 0;
         uint256 lastTxGas = 0;
-        console2.log("initial gas: ", gas);
+        console2.log("initial gas: %d \n\n", gas);
 
-        //store 5 batches
-        for (uint256 i = 0; i < 5; i++) {
-            (uint256[] memory _verseNumbers, uint256[] memory _chapterNumbers, string[] memory _verseContent) =
-                _makeVerses(i + 1);
+        JSONVerses memory jsonVerses = _getBook("genesis");
+        (uint256[] memory _verseNumbers, uint256[] memory _chapterNumbers, string[] memory _verseContent) = _makeVersesFromBook(jsonVerses);
+        uint256 _len = jsonVerses.verses.length;
 
-            _manager.addBatchVerses(indexOne, _bookId, _verseNumbers, _chapterNumbers, _verseContent);
+        for (uint256 start = 0; start < _len; start += 100) {
+            uint256 end = start + 100 > _len ? _len : start + 100;
+            uint256 batchSize = end - start;
+            console2.log("start: %d, end: %d, batch size: %d", start, end, batchSize);
+
+            uint256[] memory batchVerseNumbers = new uint256[](batchSize);
+            uint256[] memory batchChapterNumbers = new uint256[](batchSize);
+            string[] memory batchVerseContent = new string[](batchSize);
+
+            for (uint256 j = 0; j < batchSize; j++) {
+                batchVerseNumbers[j] = _verseNumbers[start + j];
+                batchChapterNumbers[j] = _chapterNumbers[start + j];
+                batchVerseContent[j] = _verseContent[start + j];
+            }
+
+            _manager.addBatchVerses(indexOne, _bookId, batchVerseNumbers, batchChapterNumbers, batchVerseContent);
 
             uint256 gasUsed = gas - gasleft();
 
             // percentage increase = ((newVal - oldVal) / oldVal) x 100%
             if (oldGasUsed != 0) {
                 if (oldGasUsed < gasUsed) {
-                    console2.log("\n");
                     uint256 diff = gasUsed - oldGasUsed;
                     uint256 scaledPercentage = (diff * scale) / oldGasUsed;
 
@@ -98,28 +113,26 @@ abstract contract Base_Test is Test {
                             vm.toString(integerPart), ".", decimalPart < 10 ? "0" : "", vm.toString(decimalPart), "%"
                         )
                     );
-
-                    string memory gasUsedStr =
-                        string(abi.encodePacked("Gas used for batch # ", vm.toString(i + 1), ":"));
-                    console2.log(gasUsedStr, gasUsed);
-                    console2.log("increase", diff);
-                    console2.log("percentage increase", rslt);
-                    console2.log("\n");
+                    console2.log("gas used:", gasUsed);
+                    console2.log("increase:", diff);
+                    console2.log("percentage increase:", rslt);
                 } else {
-                    console2.log("No Increase, gas used: ", gasUsed);
+                    console2.log("gas used: %d \n  no increase", gasUsed);
                 }
             } else {
                 firstTxGas = gas - gasleft();
                 console2.log("FIRST RUN, gas used: ", vm.toString(firstTxGas));
             }
-            if (i == 5) lastTxGas = gasUsed;
+            if (end == _len) lastTxGas = gasUsed; // last batch/tx 
             oldGasUsed = gasUsed;
 
             gas = gasleft();
-            console2.log("ENDOFLOOP gasLeft: ", gas);
+            console2.log("ENDOFLOOP gasLeft: %d \n", gas);
         }
 
-        //now log the entire increase (across all 5 batches)
+        console2.log("\n\n firstTxGas: %d \n lastTxGas: %d \n", firstTxGas, lastTxGas);
+
+        //now log the entire increase (across all batches)
         if (lastTxGas > firstTxGas) {
             uint256 diff = lastTxGas - firstTxGas;
             uint256 scaledPercentage = (diff * scale) / firstTxGas;
@@ -132,16 +145,10 @@ abstract contract Base_Test is Test {
                     vm.toString(integerPart), ".", decimalPart < 10 ? "0" : "", vm.toString(decimalPart), "%"
                 )
             );
-            console2.log("\n");
-            console2.log("entire % increase", rslt);
+            console2.log("\n entire % increase", rslt);
             console2.log("first tx gas", firstTxGas);
-            console2.log("last tx gas", lastTxGas);
-        } else {
-            console2.log("\n");
-            console2.log("First tx cost more than the final tx - no extra log needed");
-            console2.log("\n");
-            console2.log("\n");
-        }
+            console2.log("last tx gas: %d \n", lastTxGas);
+        }        
     }
 
     function testOwnershipTransfer() public virtual {
@@ -663,6 +670,23 @@ abstract contract Base_Test is Test {
     }
 
     // real data
+    // takes an array (jsonVerses.verses) and breaks it up...
+    // returns 3 arrays for verse numbers, chapter numbers, and verse text-content
+    function _makeVersesFromBook(JSONVerses memory _jsonVerses) private returns (uint256[] memory, uint256[] memory, string[] memory) {
+        uint256 _len = _jsonVerses.verses.length;
+        uint256[] memory _verseNumbers = new uint256[](_len);
+        uint256[] memory _chapterNumbers = new uint256[](_len);
+        string[] memory _verseContent = new string[](_len);
+        for (uint256 i = 0; i < _len; i++) {
+            _verseNumbers[i] = _jsonVerses.verses[i].VerseNumber;
+            _chapterNumbers[i] = _jsonVerses.verses[i].ChapterNumber;
+            _verseContent[i] = _jsonVerses.verses[i].VerseContent;
+        }
+
+        return (_verseNumbers, _chapterNumbers, _verseContent);
+    }/*  */
+
+    // real data
     // returns an array of structs (representing verses) for the provided book title
     function _getBook(string memory _bookName) private returns (JSONVerses memory) {
         string memory root = vm.projectRoot();
@@ -674,4 +698,6 @@ abstract contract Base_Test is Test {
         JSONVerses memory jsonVerses = abi.decode(data, (JSONVerses));
         return jsonVerses;
     }
+
+    // END: HELPERS
 }
