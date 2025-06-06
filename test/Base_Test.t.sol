@@ -23,11 +23,47 @@ abstract contract Base_Test is Test {
     string constant titleTwo = "Exodus";
     string constant titleThree = "Leviticus";
 
+    // vm.parseJson - json data is decoded into struct fields aplphabetically
+    struct AlphabeticalVerseStruct {
+        uint256 ChapterNumber;
+        string FullVerseChapter;
+        uint256 StringLength;
+        string VerseContent;
+        uint256 VerseNumber;
+    }
+
+    struct JSONVerses {
+        AlphabeticalVerseStruct[] verses;
+    }
+
     function setUp() public virtual {
         owner = address(this); // The test contract is the deployer/owner.
         alice = address(0x1);
         bob = address(0x2);
         _manager = new BookManager();
+    }
+
+    // forge test --mt testjsonfile
+    function testjsonfile() public virtual {
+        string memory root = vm.projectRoot();
+        // string memory path = string.concat(root, "/test/json/json_bible/genesis.json");
+        string memory path = string.concat(root, "/test/json/json_bible/ruth.json");
+        string memory json = vm.readFile(path);
+        bytes memory data = vm.parseJson(json);
+        JSONVerses memory jsonVerses = abi.decode(data, (JSONVerses));
+ 
+        for (uint256 i = 0; i < jsonVerses.verses.length; i++) {
+            AlphabeticalVerseStruct memory v = jsonVerses.verses[i];
+            
+            console2.log(
+                // "verse: %d, chapter: %d, verseContent: %s",
+                "verse: %d, chapter: %d, length: %d",
+                v.VerseNumber,
+                v.ChapterNumber,
+                v.StringLength
+                // v.VerseContent,
+            );
+        }
     }
 
     // forge test --mt testLogGasIncreasePerBatch

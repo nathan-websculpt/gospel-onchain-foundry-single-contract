@@ -5,6 +5,7 @@ libs = ["lib"]
 ffi = true
 evm_version = 'shanghai'
 viaIR = true
+fs_permissions = [{ access = "read", path = "test/json/json_bible/" }]
 
 remappings = [
     '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/',
