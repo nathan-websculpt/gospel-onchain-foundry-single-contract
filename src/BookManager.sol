@@ -108,7 +108,10 @@ contract BookManager is Ownable {
                 preventSkippingVerse(_bookIndex, _verseNumber[0], _chapterNumber[0]),
                 "The contract is preventing you from skipping a verse."
             );
-            require(preventSkippingChapter(_bookIndex, _chapterNumber[0]), "The contract is preventing you from skipping a chapter.");
+            require(
+                preventSkippingChapter(_bookIndex, _chapterNumber[0]),
+                "The contract is preventing you from skipping a chapter."
+            );
             require(
                 enforceFirstVerseOfNewChapter(_bookIndex, _verseNumber[0], _chapterNumber[0]),
                 "The contract is preventing you from starting a new chapter with a verse that is not 1."
@@ -190,13 +193,19 @@ contract BookManager is Ownable {
         thisVerse.chapterNumber = _chapterNumber;
         thisVerse.verseContent = _verseContent;
 
-        emit Verse(msg.sender, _bookIndex, _bookId, thisBook.numberOfVerses, _verseNumber, _chapterNumber, _verseContent);
+        emit Verse(
+            msg.sender, _bookIndex, _bookId, thisBook.numberOfVerses, _verseNumber, _chapterNumber, _verseContent
+        );
     }
 
     // verse-skip prevention
     // to prevent skipping verses
     // prevents the situation of storing 1:1 and then storing 1:3
-    function preventSkippingVerse(uint256 _bookIndex, uint256 _verseNumber, uint256 _chapterNumber) private view returns (bool) {
+    function preventSkippingVerse(uint256 _bookIndex, uint256 _verseNumber, uint256 _chapterNumber)
+        private
+        view
+        returns (bool)
+    {
         bool canContinue = true;
         BookStr storage thisBook = books[_bookIndex - 1];
         VerseStr storage lastVerseAdded = thisBook.verses[thisBook.numberOfVerses];
@@ -221,7 +230,11 @@ contract BookManager is Ownable {
         return canContinue;
     }
 
-    function enforceFirstVerseOfNewChapter(uint256 _bookIndex, uint256 _verseNumber, uint256 _chapterNumber) private view returns (bool) {
+    function enforceFirstVerseOfNewChapter(uint256 _bookIndex, uint256 _verseNumber, uint256 _chapterNumber)
+        private
+        view
+        returns (bool)
+    {
         bool canContinue = true;
         BookStr storage thisBook = books[_bookIndex - 1];
         VerseStr storage lastVerseAdded = thisBook.verses[thisBook.numberOfVerses];
@@ -232,7 +245,11 @@ contract BookManager is Ownable {
     }
 
     //TODO: incorporate the bookIndex into this
-    function enforceFirstVerse(uint256 _bookIndex, uint256 _verseNumber, uint256 _chapterNumber) private pure returns (bool) {
+    function enforceFirstVerse(uint256 _bookIndex, uint256 _verseNumber, uint256 _chapterNumber)
+        private
+        pure
+        returns (bool)
+    {
         bool canContinue = true;
         if (_chapterNumber != 1 || _verseNumber != 1) {
             canContinue = false;
