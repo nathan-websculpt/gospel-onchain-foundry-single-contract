@@ -4,6 +4,20 @@
 // forge coverage --ir-minimum --report debug
 // forge coverage --ir-minimum --report debug > coverage.txt
 
+// html coverage report
+// forge coverage --ir-minimum --report lcov
+// genhtml lcov.info --output-directory coverage-html
+
+// html coverage branches report
+// genhtml lcov.info -o report --branch-coverage --rc derive_function_end_line=0 --output-directory coverage-branches-html
+
+// in coverage html: 
+//                  Blue Highlighted Line = Not relevant for coverage (not executable code).
+//                  Red Highlighted Line  = Code not executed at all during tests.
+//                  Blue +                = Not executable, for reference only.
+//                  Red ++                = Uncovered branch (a logical path was never executed in tests).
+//                                              usually appears next to a conditional where one or more possible execution paths have not been tested
+
 pragma solidity 0.8.28;
 
 import {BookManager} from "../src/BookManager.sol";
